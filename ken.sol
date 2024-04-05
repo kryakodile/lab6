@@ -11,76 +11,64 @@ interface IERC20 {
     function approve(address spender, uint256 amount) external returns (bool);
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 
-
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
+contract ttoken {
+    address private owner;
+    string public name;
+    string public symbol;
+    uint8 public decimals;
 
-contract SampleToken is IERC20 {
-    using SafeMath for uint256;
-
-    string public constant name = "SampleToken";
-    string public constant symbol = "ASU";
-    uint8 public constant decimals = 8;
-
-    mapping(address => uint256) balances;
-    mapping(address => mapping (address => uint256)) allowed;
-
-    uint256 totalSupply_;
-
-    constructor(uint256 total) public {
-        totalSupply_ = total;
-        balances[msg.sender] = totalSupply_;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+    
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Mint(address indexed to, uint256 value);
+    
+    constructor() {
+        owner = msg.sender;
+        name = "ttToken";
+        symbol  = "ASU";
+        decimals = 8;
     }
 
-    function totalSupply() public override view returns (uint256) {
-        return totalSupply_;
+       function transfer(address _to, uint256 _value) public returns (bool success) {
+        require(_to != address(0), "Invalid address");
+        require(balanceOf[msg.sender] >= _value, "Insufficient balance");
+        
+        balanceOf[msg.sender] -= _value;
+        balanceOf[_to] += _value;
+        emit Transfer(msg.sender, _to, _value);
+        return true;
     }
-
-    function balanceOf(address tokenOwner) public override view returns (uint256) {
-        return balances[tokenOwner];
+    
+    function approve(address _spender, uint256 _value) public returns (bool success) {
+        allowance[msg.sender][_spender] = _value;
+        emit Approval(msg.sender, _spender, _value);
+        return true;
     }
-
-    function transfer(address receiver, uint256 numTokens) public override returns (bool) {
-        require(numTokens <= balances[msg.sender]);
-        balances[msg.sender] = balances[msg.sender].sub(numTokens);
-        balances[receiver] = balances[receiver].add(numTokens);
-        emit Transfer(msg.sender, receiver, numTokens);
+    
+    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success) {
+        require(_to != address(0), "Invalid address");
+        require(balanceOf[_from] >= _value, "Insufficient balance");
+        require(_value <= allowance[_from][msg.sender], "Allowance exceeded");
+        
+        balanceOf[_from] -= _value;
+        balanceOf[_to] += _value;
+        allowance[_from][msg.sender] -= _value;
+        emit Transfer(_from, _to, _value);
         return true;
     }
 
-    function approve(address delegate, uint256 numTokens) public override returns (bool) {
-        allowed[msg.sender][delegate] = numTokens;
-        emit Approval(msg.sender, delegate, numTokens);
+    
+    function mint(address to, uint256 value) public returns (bool success) {
+        require(msg.sender == owner, "Only owner can mint tokens");
+        require(to != address(0), "Invalid address");
+        balanceOf[to] += value*10**decimals;
+        emit Mint(to, value*10**decimals);
         return true;
-    }
-
-    function allowance(address owner, address delegate) public override view returns (uint) {
-        return allowed[owner][delegate];
-    }
-
-    function transferFrom(address owner, address buyer, uint256 numTokens) public override returns (bool) {
-        require(numTokens <= balances[owner]);
-        require(numTokens <= allowed[owner][msg.sender]);
-
-        balances[owner] = balances[owner].sub(numTokens);
-        allowed[owner][msg.sender] = allowed[owner][msg.sender].sub(numTokens);
-        balances[buyer] = balances[buyer].add(numTokens);
-        emit Transfer(owner, buyer, numTokens);
-        return true;
-    }
-}
-
-library SafeMath {
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-      assert(b <= a);
-      return a - b;
-    }
-
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-      uint256 c = a + b;
-      assert(c >= a);
-      return c;
     }
 }
