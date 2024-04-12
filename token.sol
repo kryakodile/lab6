@@ -1,98 +1,62 @@
-// SPDX-License-Identifier: MIT  
-pragma solidity ^0.8.0;  
-  
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";  
-  
-contract MyToken is IERC20 {  
-    string private _name = "ASUtoken";  
-    string private _symbol = "ASU";  
-    uint8 private _decimals = 8;  
-    uint256 private _totalSupply;  
-  
-    mapping(address => uint256) private _balances;  
-    mapping(address => mapping(address => uint256)) private _allowances;  
-  
-    constructor() {  
-        _totalSupply = 1000000000 * 10**uint256(_decimals);  
-        _balances[msg.sender] = _totalSupply;  
-        emit Transfer(address(0), msg.sender, _totalSupply);  
-    }  
-  
-    function name() public view returns (string memory) {  
-        return _name;  
-    }  
-  
-    function symbol() public view returns (string memory) {  
-        return _symbol;  
-    }  
-  
-    function decimals() public view returns (uint8) {  
-        return _decimals;  
-    }  
-  
-    function totalSupply() public view override returns (uint256) {  
-        return _totalSupply;  
-    }  
-  
-    function balanceOf(address account) public view override returns (uint256) {  
-        return _balances[account];  
-    }  
-  
-    function transfer(address recipient, uint256 amount) public override returns (bool) {  
-        _transfer(msg.sender, recipient, amount);  
-        return true;  
-    }  
-  
-    function allowance(address owner, address spender) public view override returns (uint256) {  
-        return _allowances[owner][spender];  
-    }  
-  
-    function approve(address spender, uint256 amount) public override returns (bool) {  
-        _approve(msg.sender, spender, amount);  
-        return true;  
-    }  
-  
-    function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {  
-        _transfer(sender, recipient, amount);  
-        _approve(sender, msg.sender, _allowances[sender][msg.sender] - amount);  
-        return true;  
-    }  
-  
-    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {  
-        _approve(msg.sender, spender, _allowances[msg.sender][spender] + addedValue);  
-        return true;  
-    }  
-  
-    function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {  
-        _approve(msg.sender, spender, _allowances[msg.sender][spender] - subtractedValue);  
-        return true;  
-    }  
-  
-    function mint(address account, uint256 amount) public {  
-        require(account != address(0), "ERC20: mint to the zero address");  
-  
-        _totalSupply += amount;  
-        _balances[account] += amount;  
-        emit Transfer(address(0), account, amount);  
-    }  
-  
-    function _transfer(address sender, address recipient, uint256 amount) internal {  
-        require(sender != address(0), "ERC20: transfer from the zero address");  
-        require(recipient != address(0), "ERC20: transfer to the zero address");  
-  
-        uint256 senderBalance = _balances[sender];  
-        require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");  
-        _balances[sender] = senderBalance - amount;  
-        _balances[recipient] += amount;  
-  
-        emit Transfer(sender, recipient, amount);  
-    }  
-  
-    function _approve(address owner, address spender, uint256 amount) internal {  
-        require(owner != address(0), "ERC20: approve from the zero address");  
-        require(spender != address(0), "ERC20: approve to the zero address");  
-  
-        _allowances[owner][spender] = amount;  
-        emit Approval(owner, spender, amount);  
-    }  
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract MyToken {
+    address private owner;
+    string public name = "ASUtoken";
+    string public symbol = "ASU";
+    uint8 public decimals = 8;
+    uint256 public totalSupply;
+    uint256 public maxSupply = 1000000 * (10**decimals);
+
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+    
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Mint(address indexed to, uint256 value);
+    
+    constructor() {
+        owner = msg.sender;
+    }
+    
+    function transfer(address _to, uint256 _value) public returns (bool success) {
+        require(_to != address(0), "Invalid address");
+        require(balanceOf[msg.sender] >= _value, "Insufficient balance");
+        
+        balanceOf[msg.sender] -= _value;
+        balanceOf[_to] += _value;
+        emit Transfer(msg.sender, _to, _value);
+        return true;
+    }
+    
+    function approve(address _spender, uint256 _value) public returns (bool success) {
+        allowance[msg.sender][_spender] = _value;
+        emit Approval(msg.sender, _spender, _value);
+        return true;
+    }
+    
+    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success) {
+        require(_to != address(0), "Invalid address");
+        require(balanceOf[_from] >= _value, "Insufficient balance");
+        require(_value <= allowance[_from][msg.sender], "Allowance exceeded");
+        
+        balanceOf[_from] -= _value;
+        balanceOf[_to] += _value;
+        allowance[_from][msg.sender] -= _value;
+        emit Transfer(_from, _to, _value);
+        return true;
+    }
+
+    
+    function mint(address to, uint256 value) public returns (bool success) {
+        require(msg.sender == owner, "You are not owner");
+        require(value*10**decimals <= maxSupply, "no money" );
+        require(to != address(0), "Invalid address");
+        maxSupply -= value*10**decimals;
+        totalSupply += value*10**decimals;
+        balanceOf[to] += value*10**decimals;
+        emit Mint(to, value*10**decimals);
+        return true;
+    }
 }
